@@ -1,4 +1,8 @@
-import { GetRootDataResponse, RootData } from "./APItypes.js";
+import {
+  GetMetadataResponse,
+  GetRootDataResponse,
+  RootData,
+} from "./APItypes.js";
 import { CodecksConfig } from "../validations/config.js";
 import { CodecksContext } from "./context.js";
 
@@ -11,7 +15,14 @@ class CodecksClient {
 
   public async initializeContext(): Promise<void> {
     const rootData = await this.getRootData();
-    this.context.initialize(rootData.account, rootData.userId, rootData.projectId);
+    this.context.initialize(
+      rootData.account,
+      rootData.userId,
+      rootData.projectId
+    );
+
+    const metadata = await this.getMetadata();
+    this.context.setMetadata(metadata.account[rootData.account.id]);
   }
 
   public async request<T>(query: any, endpoint?: string): Promise<T> {
@@ -32,9 +43,9 @@ class CodecksClient {
       const response = await fetch(url, {
         method: "POST",
         headers: {
-          "X-Account": this.config.teamId,
+          "X-Account": this.config.subdomain,
           "Content-Type": "application/json",
-          "X-Auth-Token": this.config.apiToken,
+          "X-Auth-Token": this.config.authToken,
         },
         body,
       });
@@ -101,5 +112,23 @@ class CodecksClient {
       throw error;
     }
   }
+
+  async getMetadata() {
+    if (!this.context.account) {
+      throw new Error("Context not initialized - account not available");
+    }
+
+    const query = {
+      [`account(${this.context.account.id})`]: [
+        "effortScale",
+        "priorityLabels",
+      ],
+    };
+
+    const response = await this.request<GetMetadataResponse>(query);
+
+    return response;
+  }
 }
+
 export default CodecksClient;

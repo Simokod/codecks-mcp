@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ToolGroup } from "./ToolGroup.js";
-import { CodecksDeck } from "../codecks/entities.js";
+import { CardType, CodecksDeck } from "../codecks/entities.js";
 import { getDecksResponse } from "../codecks/APItypes.js";
 
 export class DeckTools extends ToolGroup {
@@ -12,12 +12,15 @@ export class DeckTools extends ToolGroup {
     this.registerTool(
       "create-deck",
       "Create a new deck",
-      async (args) => this.createDeck(args.name),
+      async (args) => this.createDeck(args.name, args.spaceId),
       {
         name: z
           .string()
           .min(1, "Name is required")
           .describe("The name of the deck to create"),
+        spaceId: z
+          .number()
+          .describe("The ID of the space to create the deck in"),
       }
     );
   }
@@ -39,7 +42,10 @@ export class DeckTools extends ToolGroup {
     return decks;
   }
 
-  private async createDeck(name: string): Promise<CodecksDeck> {
+  private async createDeck(
+    name: string,
+    spaceId: number
+  ): Promise<CodecksDeck> {
     if (!this.client.context.isInitialized()) {
       throw new Error("Context not initialized");
     }
@@ -53,8 +59,8 @@ export class DeckTools extends ToolGroup {
         coverFileData: null,
         projectId: this.client.context.projectId,
         userId: this.client.context.userId,
-        spaceId: 1,
-        allowedCardTypes: ["hero", "task", "doc"],
+        spaceId,
+        allowedCardTypes: CardType,
       },
       "decks/create"
     );

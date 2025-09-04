@@ -3,17 +3,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import CodecksClient from "./codecks/client.js";
 import { CodecksConfig, validateConfig } from "./validations/config.js";
-import { AccountTools } from "./tools/AccountTools.js";
+import { ProjectTools } from "./tools/ProjectTools.js";
 import { DeckTools } from "./tools/DeckTools.js";
 import { CardTools } from "./tools/CardTools.js";
 
 async function main() {
   const config: CodecksConfig = {
-    apiToken: process.env.CODECKS_API_TOKEN || "",
-    teamId: process.env.CODECKS_TEAM_ID || "",
-    // TODO: Should understand common practices for setting these values - should the user be able to set them?
-    apiTimeout: 30000,
-    maxRetries: 3,
+    authToken: process.env.CODECKS_AUTH_TOKEN || "",
+    subdomain: process.env.CODECKS_SUBDOMAIN || "",
   };
 
   try {
@@ -39,7 +36,7 @@ async function main() {
     version: "1.0.0",
   });
 
-  new AccountTools(server, client).register();
+  new ProjectTools(server, client).register();
   new DeckTools(server, client).register();
   new CardTools(server, client).register();
 

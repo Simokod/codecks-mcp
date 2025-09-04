@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { ToolGroup } from "./ToolGroup.js";
-import { CodecksCard } from "../codecks/entities.js";
+import {
+  CodecksCard,
+  CodecksApiCard,
+  CardStatus,
+  CardVisibility,
+} from "../codecks/entities.js";
 import {
   listCardsResponse,
   createCardResponse,
@@ -8,43 +13,86 @@ import {
   getCardResponse,
 } from "../codecks/APItypes.js";
 
+const cardQueryFields = [
+  "cardId",
+  "visibility",
+  "isDoc",
+  'exists:resolvables({"context":"block","isClosed":false})',
+  'exists:resolvables({"context":"review","isClosed":false})',
+  "status",
+  "derivedStatus",
+  'exists:resolvables({"isClosed":true})',
+  "lastUpdatedAt",
+  "count:attachments",
+  "hasBlockingDeps",
+  "meta",
+  "dueDate",
+  "masterTags",
+  "title",
+  "content",
+  "effort",
+  "priority",
+  "accountSeq",
+  "checkboxStats",
+];
+
 export class CardTools extends ToolGroup {
+  private getDynamicSchemas() {
+    const metadata = this.client.context.metadata;
+
+    const effortSchema = metadata?.effortScale
+      ? z
+          .number()
+          .optional()
+          .describe(
+            "Estimate must be one of the following: " +
+              metadata.effortScale.join(", ")
+          )
+      : z.number().min(0).optional();
+
+    const prioritySchema = metadata?.priorityLabels
+      ? z
+          .enum(Object.keys(metadata.priorityLabels) as [string, ...string[]])
+          .optional()
+          .describe(
+            `Priority must be one of: ${Object.entries(metadata.priorityLabels)
+              .map(([key, label]) => `${key}=${label}`)
+              .join(", ")}`
+          )
+      : z.string().optional().describe("The priority of the card");
+
+    return { effortSchema, prioritySchema };
+  }
+
   register(): void {
+    const { effortSchema, prioritySchema } = this.getDynamicSchemas();
+
     this.registerTool(
       "create-card",
       "Create a new card in a deck",
       async (args) => this.createCard(args),
       {
         deckId: z.string().describe("The ID of the deck to create the card in"),
-        title: z
-          .string()
-          .min(1, "Title is required")
-          .describe("The title of the card"),
+        title: z.string().describe("The title of the card"),
         description: z
           .string()
           .optional()
-          .describe("The description of the card"),
-        type: z
-          .enum(["hero", "task", "doc"])
-          .default("task")
-          .describe("The type of the card"),
+          .describe("The content/description of the card"),
         assigneeId: z
           .string()
           .optional()
           .describe("The ID of the user to assign the card to"),
-        priority: z
-          .enum(["low", "medium", "high"])
-          .optional()
-          .describe("The priority of the card"),
+        priority: prioritySchema,
+        effort: effortSchema,
       }
     );
 
     this.registerTool(
       "get-card",
       "Get detailed information about a specific card",
-      async (args) => this.getCard(args.cardId),
+      async (args) => this.getCard(args.cardTitle),
       {
-        cardId: z.string().describe("The ID of the card to retrieve"),
+        cardTitle: z.string().describe("The title of the card to retrieve"),
       }
     );
 
@@ -55,14 +103,10 @@ export class CardTools extends ToolGroup {
       {
         deckId: z.string().describe("The ID of the deck to list cards from"),
         status: z
-          .enum(["open", "done", "archived"])
+          .enum(CardStatus)
           .optional()
-          .describe("Filter by card status"),
-        assigneeId: z.string().optional().describe("Filter by assignee ID"),
-        type: z
-          .enum(["hero", "task", "doc"])
-          .optional()
-          .describe("Filter by card type"),
+          .describe("Status must be one of: " + CardStatus.join(", ")),
+        isArchived: z.boolean().optional().describe("Filter by archived cards"),
         limit: z
           .number()
           .min(1)
@@ -78,30 +122,26 @@ export class CardTools extends ToolGroup {
       async (args) => this.updateCard(args),
       {
         cardId: z.string().describe("The ID of the card to update"),
-        title: z.string().optional().describe("The new title of the card"),
-        description: z
-          .string()
-          .optional()
-          .describe("The new description of the card"),
+        content: z.string().optional().describe("The new content of the card"),
         assigneeId: z.string().optional().describe("The new assignee ID"),
-        priority: z
-          .enum(["low", "medium", "high"])
-          .optional()
-          .describe("The new priority"),
+        priority: prioritySchema,
+        effort: effortSchema,
         status: z
-          .enum(["open", "done", "archived"])
+          .enum(CardStatus)
           .optional()
-          .describe("The new status"),
+          .describe("Status must be one of: " + CardStatus.join(", ")),
+        visibility: z
+          .enum(CardVisibility)
+          .optional()
+          .describe("Visibility must be one of: " + CardVisibility.join(", ")),
       }
     );
 
     this.registerTool(
-      "delete-card",
-      "Delete a card",
-      async (args) => this.deleteCard(args.cardId),
-      {
-        cardId: z.string().describe("The ID of the card to delete"),
-      }
+      "get-card-options",
+      "Get available effort scale and priority labels for creating cards",
+      async () => this.getCardOptions(),
+      {}
     );
   }
 
@@ -109,23 +149,22 @@ export class CardTools extends ToolGroup {
     deckId: string;
     title: string;
     description?: string;
-    type?: "hero" | "task" | "doc";
     assigneeId?: string;
-    priority?: "low" | "medium" | "high";
-  }): Promise<CodecksCard> {
+    priority?: string;
+    effort?: number;
+  }): Promise<createCardResponse> {
     if (!this.client.context.isInitialized()) {
       throw new Error("Context not initialized");
     }
 
     const cardData = {
-      title: args.title,
-      description: args.description || "",
-      type: args.type || "task",
       deckId: args.deckId,
+      content: this.createCardContent(args.title, args.description),
       projectId: this.client.context.projectId,
       userId: this.client.context.userId,
       ...(args.assigneeId && { assigneeId: args.assigneeId }),
       ...(args.priority && { priority: args.priority }),
+      ...(args.effort && { effort: args.effort }),
     };
 
     const result = await this.client.request<createCardResponse>(
@@ -133,34 +172,18 @@ export class CardTools extends ToolGroup {
       "cards/create"
     );
 
-    return {
-      id: result.id,
-      title: result.title,
-      description: result.description,
-      type: result.type as "hero" | "task" | "doc",
-      status: result.status as "open" | "done" | "archived",
-      assigneeId: result.assigneeId,
-      priority: result.priority as "low" | "medium" | "high",
-      deckId: args.deckId,
-    };
+    console.error("Card created successfully", result);
+    return result;
   }
 
-  private async getCard(cardId: string): Promise<CodecksCard> {
+  private async getCard(cardTitle: string): Promise<CodecksCard> {
     const query = {
       _root: [
         {
           account: [
             {
-              [`cards(${JSON.stringify({ id: cardId })})`]: [
-                // "id",
-                "title",
-                // "description",
-                // "type",
-                // "status",
-                // "assigneeId",
-                // "priority",
-                // "deckId",
-              ],
+              [`cards({"title":{"op":"contains","value":"${cardTitle}"}})`]:
+                cardQueryFields,
             },
           ],
         },
@@ -169,30 +192,30 @@ export class CardTools extends ToolGroup {
 
     const response = await this.client.request<getCardResponse>(query);
 
-    const card = response.card[cardId];
-    if (!card) {
+    const accountData = Object.values(response.account)[0];
+    const cardIds =
+      accountData[`cards({"title":{"op":"contains","value":"${cardTitle}"}})`];
+
+    if (!cardIds || cardIds.length === 0) {
+      throw new Error(`No card found with title containing "${cardTitle}"`);
+    }
+
+    const cardId = cardIds[0];
+    const apiCard = response.card[cardId];
+
+    if (!apiCard) {
       throw new Error(`Card with ID ${cardId} not found`);
     }
 
-    return {
-      id: card.cardId,
-      title: card.title,
-      // account: card.account,
-      description: "",
-      type: "task",
-      status: "open",
-      assigneeId: "",
-      priority: "low",
-      deckId: "",
-    };
+    return this.mapApiCardToMCPCard(apiCard);
   }
 
   private async listCards(args: {
     deckId: string;
-    status?: "open" | "done" | "archived";
+    status?: CardStatus;
     assigneeId?: string;
-    type?: "hero" | "task" | "doc";
     limit?: number;
+    isArchived?: boolean;
   }): Promise<CodecksCard[]> {
     const limit = args.limit || 20;
 
@@ -205,11 +228,8 @@ export class CardTools extends ToolGroup {
     if (args.status) {
       cardFilters.status = args.status;
     }
-    if (args.assigneeId) {
-      cardFilters.assigneeId = args.assigneeId;
-    }
-    if (args.type) {
-      cardFilters.type = args.type;
+    if (args.isArchived) {
+      cardFilters.visibility = "archived";
     }
 
     const query = {
@@ -217,7 +237,7 @@ export class CardTools extends ToolGroup {
         {
           account: [
             {
-              [`cards(${JSON.stringify(cardFilters)})`]: ["title"],
+              [`cards(${JSON.stringify(cardFilters)})`]: cardQueryFields,
             },
           ],
         },
@@ -226,39 +246,30 @@ export class CardTools extends ToolGroup {
 
     const response = await this.client.request<listCardsResponse>(query);
 
-    const cards = Object.values(response.card);
+    const apiCards = Object.values(response.card);
 
-    return cards.map((card) => ({
-      id: card.cardId,
-      title: card.title,
-      account: card.account,
-      description: "",
-      type: "task",
-      status: "open",
-      assigneeId: "",
-      priority: "low",
-      deckId: "",
-    }));
+    return apiCards.map((apiCard) => this.mapApiCardToMCPCard(apiCard));
   }
 
   private async updateCard(args: {
     cardId: string;
-    title?: string;
-    description?: string;
+    content?: string;
     assigneeId?: string;
-    priority?: "low" | "medium" | "high";
-    status?: "open" | "done" | "archived";
-  }): Promise<CodecksCard> {
-    // First get the current card to preserve the deckId
-    const currentCard = await this.getCard(args.cardId);
-
+    priority?: string;
+    effort?: number;
+    status?: CardStatus;
+    visibility?: CardVisibility;
+  }): Promise<boolean> {
     const updateData = {
       id: args.cardId,
-      ...(args.title && { title: args.title }),
-      ...(args.description !== undefined && { description: args.description }),
+      ...(args.content !== undefined && { content: args.content }),
       ...(args.assigneeId !== undefined && { assigneeId: args.assigneeId }),
       ...(args.priority && { priority: args.priority }),
+      ...(args.effort && { effort: args.effort }),
       ...(args.status && { status: args.status }),
+      ...(args.visibility !== undefined && {
+        visibility: args.visibility,
+      }),
     };
 
     const result = await this.client.request<updateCardResponse>(
@@ -266,22 +277,53 @@ export class CardTools extends ToolGroup {
       "cards/update"
     );
 
+    console.error("Card updated successfully", result);
+    return true;
+  }
+
+  private async getCardOptions(): Promise<{
+    effortScale: number[];
+    priorityLabels: Record<string, string>;
+  }> {
+    const metadata = this.client.context.metadata;
+    if (!metadata) {
+      return {
+        effortScale: [],
+        priorityLabels: {},
+      };
+    }
+
     return {
-      id: result.id,
-      title: result.title,
-      description: result.description,
-      type: result.type as "hero" | "task" | "doc",
-      status: result.status as "open" | "done" | "archived",
-      assigneeId: result.assigneeId,
-      priority: result.priority as "low" | "medium" | "high",
-      deckId: currentCard.deckId,
+      effortScale: metadata.effortScale,
+      priorityLabels: metadata.priorityLabels,
     };
   }
 
-  private async deleteCard(
-    cardId: string
-  ): Promise<{ success: boolean; message: string }> {
-    await this.client.request({ id: cardId }, "cards/delete");
-    return { success: true, message: `Card ${cardId} deleted successfully` };
+  private mapApiCardToMCPCard(apiCard: CodecksApiCard): CodecksCard {
+    return {
+      id: apiCard.cardId,
+      title: apiCard.title,
+      content: apiCard.content,
+      type: apiCard.isDoc ? "doc" : "task",
+      status: apiCard.status as CardStatus | undefined,
+      assigneeId: apiCard.assigneeId,
+      priority: apiCard.priority,
+      deckId: apiCard.deckId,
+      visibility: apiCard.visibility,
+      derivedStatus: apiCard.derivedStatus,
+      lastUpdatedAt: apiCard.lastUpdatedAt,
+      countAttachments: apiCard.countAttachments,
+      hasBlockingDeps: apiCard.hasBlockingDeps,
+      meta: apiCard.meta,
+      dueDate: apiCard.dueDate,
+      masterTags: apiCard.masterTags,
+      effort: apiCard.effort,
+      accountSeq: apiCard.accountSeq,
+      checkboxStats: apiCard.checkboxStats,
+    };
+  }
+
+  private createCardContent(title: string, description?: string): string {
+    return description ? `${title}\n\n${description}` : title;
   }
 }

@@ -1,7 +1,11 @@
-import { CodecksAccount, CodecksProject } from "./entities.js";
+import {
+  CodecksApiAccount,
+  CodecksApiCard,
+  CodecksApiProject,
+} from "./entities.js";
 
 export type RootData = {
-  account: CodecksAccount;
+  account: CodecksApiAccount;
   userId: string;
   projectId: string;
 };
@@ -11,9 +15,27 @@ export type GetRootDataResponse = {
     account: string;
     loggedInUser: string;
   };
-  account: Record<string, CodecksAccount>;
+  account: Record<string, CodecksApiAccount>;
   user: Record<string, { id: string }>;
-  project: Record<string, CodecksProject>;
+  project: Record<string, CodecksApiProject>;
+};
+
+export type CodecksMetadata = {
+  id: string;
+  effortScale: number[];
+  priorityLabels: Record<string, string>;
+};
+
+export type GetMetadataResponse = {
+  _root: { account: string };
+  account: Record<
+    string,
+    {
+      id: string;
+      effortScale: number[];
+      priorityLabels: Record<string, string>;
+    }
+  >;
 };
 
 export type getDecksResponse = {
@@ -25,30 +47,20 @@ export type getDecksResponse = {
 export type getCardResponse = {
   _root: { account: string };
   account: Record<string, { id: string } & Record<string, string[]>>;
-  card: Record<string, { title: string; cardId: string; account: string }>;
+  card: Record<string, CodecksApiCard>;
 };
 
 export type listCardsResponse = {
   _root: { account: string };
   account: Record<string, { id: string } & Record<string, string[]>>;
-  card: Record<
-    string,
-    {
-      title: string;
-      cardId: string;
-      account: string;
-    }
-  >;
+  card: Record<string, CodecksApiCard>;
 };
 
 export type createCardResponse = {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  status: string;
-  assigneeId?: string;
-  priority?: string;
+  payload: {
+    id: string;
+  };
+  actionId: string;
 };
 
 export type updateCardResponse = {
@@ -59,4 +71,18 @@ export type updateCardResponse = {
   status: string;
   assigneeId?: string;
   priority?: string;
+};
+
+export type getSpacesResponse = {
+  project: Record<
+    string,
+    {
+      spaces: Array<{
+        id: number;
+        name: string | null;
+        defaultAllowedCardTypes: string[];
+      }>;
+      id: string;
+    }
+  >;
 };
