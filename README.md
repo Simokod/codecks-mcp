@@ -1,12 +1,16 @@
 # Codecks MCP
 
-A simple Model Context Protocol (MCP) server for basic Codecks task management. This MCP provides essential card and deck manipulation capabilities.
+A simple Model Context Protocol (MCP) server for Codecks task management. This MCP provides essential card and deck manipulation capabilities for AI assistants like Cursor, Claude, and other MCP-compatible tools.
 
 ## Features
 
 - **Manage Cards**: Create, view, update, and organize your task cards
 - **Organize Decks**: Create new decks and browse existing ones
 - **Smart Filtering**: Find cards by status and archive state
+
+## Keywords
+
+`codecks mcp` `model context protocol` `cursor mcp` `claude mcp` `ai assistant` `task management` `codecks integration` `mcp server` `typescript mcp`
 
 ## Configuration
 
