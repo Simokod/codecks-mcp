@@ -8,10 +8,6 @@ A simple Model Context Protocol (MCP) server for Codecks task management. This M
 - **Organize Decks**: Create new decks and browse existing ones
 - **Smart Filtering**: Find cards by status and archive state
 
-## Keywords
-
-`codecks mcp` `model context protocol` `cursor mcp` `claude mcp` `ai assistant` `task management` `codecks integration` `mcp server` `typescript mcp`
-
 ## Configuration
 
 The Codecks MCP server is configured through the MCP client configuration file (typically `~/.cursor/mcp.json` or similar). You need to set the following environment variables:
