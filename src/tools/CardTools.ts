@@ -122,7 +122,11 @@ export class CardTools extends ToolGroup {
       async (args) => this.updateCard(args),
       {
         cardId: z.string().describe("The ID of the card to update"),
-        content: z.string().optional().describe("The new content of the card"),
+        deckId: z
+          .string()
+          .optional()
+          .describe("The ID of the deck to move the card to"),
+        content: z.string().optional(),
         assigneeId: z.string().optional().describe("The new assignee ID"),
         priority: prioritySchema,
         effort: effortSchema,
@@ -253,6 +257,7 @@ export class CardTools extends ToolGroup {
 
   private async updateCard(args: {
     cardId: string;
+    deckId?: string;
     content?: string;
     assigneeId?: string;
     priority?: string;
@@ -262,6 +267,7 @@ export class CardTools extends ToolGroup {
   }): Promise<boolean> {
     const updateData = {
       id: args.cardId,
+      ...(args.deckId !== undefined && { deckId: args.deckId }),
       ...(args.content !== undefined && { content: args.content }),
       ...(args.assigneeId !== undefined && { assigneeId: args.assigneeId }),
       ...(args.priority && { priority: args.priority }),
