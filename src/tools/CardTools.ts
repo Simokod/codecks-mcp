@@ -4,6 +4,7 @@ import {
   CodecksCard,
   CodecksApiCard,
   CardStatus,
+  CardType,
   CardVisibility,
 } from "../codecks/entities.js";
 import {
@@ -35,6 +36,7 @@ const cardQueryFields = [
   "priority",
   "accountSeq",
   "checkboxStats",
+  "parentCardId",
 ];
 
 export class CardTools extends ToolGroup {
@@ -153,6 +155,21 @@ export class CardTools extends ToolGroup {
           .enum(CardVisibility)
           .optional()
           .describe("Visibility must be one of: " + CardVisibility.join(", ")),
+        cardType: z
+          .enum(CardType)
+          .optional()
+          .describe(
+            "Card type must be one of: " +
+              CardType.join(", ") +
+              '. Use "hero" for hero cards, "task" for regular tasks.'
+          ),
+        parentCardId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe(
+            "The ID of the hero card to nest this card under. Pass null to remove the parent."
+          ),
       }
     );
 
@@ -356,6 +373,8 @@ export class CardTools extends ToolGroup {
     effort?: number;
     status?: CardStatus;
     visibility?: CardVisibility;
+    cardType?: CardType;
+    parentCardId?: string | null;
   }): Promise<boolean> {
     const updateData = {
       id: args.cardId,
@@ -365,8 +384,10 @@ export class CardTools extends ToolGroup {
       ...(args.priority && { priority: args.priority }),
       ...(args.effort && { effort: args.effort }),
       ...(args.status && { status: args.status }),
-      ...(args.visibility !== undefined && {
-        visibility: args.visibility,
+      ...(args.visibility !== undefined && { visibility: args.visibility }),
+      ...(args.cardType !== undefined && { cardType: args.cardType }),
+      ...(args.parentCardId !== undefined && {
+        parentCardId: args.parentCardId,
       }),
     };
 
