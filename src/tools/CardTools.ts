@@ -8,6 +8,7 @@ import {
 } from "../codecks/entities.js";
 import {
   listCardsResponse,
+  listQueueEntriesResponse,
   createCardResponse,
   updateCardResponse,
   getCardResponse,
@@ -113,6 +114,20 @@ export class CardTools extends ToolGroup {
           .max(100)
           .default(20)
           .describe("Maximum number of cards to return"),
+      }
+    );
+
+    this.registerTool(
+      "list-hand-cards",
+      "List cards currently in the authenticated user's hand",
+      async (args) => this.listHandCards(args),
+      {
+        limit: z
+          .number()
+          .min(1)
+          .max(100)
+          .default(20)
+          .describe("Maximum number of hand cards to return"),
       }
     );
 
@@ -253,6 +268,83 @@ export class CardTools extends ToolGroup {
     const apiCards = Object.values(response.card);
 
     return apiCards.map((apiCard) => this.mapApiCardToMCPCard(apiCard));
+  }
+
+  private async listHandCards(args: { limit?: number }): Promise<CodecksCard[]> {
+    if (!this.client.context.isInitialized() || !this.client.context.userId) {
+      throw new Error("Context not initialized");
+    }
+
+    const limit = args.limit || 20;
+    const queueEntriesQueryKey = `queueEntries(${JSON.stringify({
+      userId: this.client.context.userId,
+      $order: "sortIndex",
+      $limit: limit,
+    })})`;
+
+    const queueEntriesQuery = {
+      _root: [
+        {
+          account: [
+            {
+              [queueEntriesQueryKey]: [
+                "card",
+                "sortIndex",
+                "user",
+                "cardDoneAt",
+                "createdAt",
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const queueEntriesResponse =
+      await this.client.request<listQueueEntriesResponse>(queueEntriesQuery);
+
+    const accountData = Object.values(queueEntriesResponse.account)[0];
+    const queueEntryIds = accountData[queueEntriesQueryKey] || [];
+
+    if (queueEntryIds.length === 0) {
+      return [];
+    }
+
+    const handEntries = queueEntryIds
+      .map((id) => queueEntriesResponse.queueEntry[id])
+      // Active hand entries are not yet done.
+      .filter((entry) => !entry?.cardDoneAt)
+      .filter(
+        (entry): entry is {
+          card: string;
+          sortIndex: number;
+          user: string;
+          cardDoneAt?: string | null;
+        } =>
+          Boolean(entry?.card)
+      );
+
+    const orderedCardIds = handEntries.map((entry) => entry.card);
+
+    const cardsQuery = {
+      _root: [
+        {
+          account: [
+            {
+              [`cards(${JSON.stringify({ cardId: orderedCardIds })})`]:
+                cardQueryFields,
+            },
+          ],
+        },
+      ],
+    };
+
+    const cardsResponse = await this.client.request<listCardsResponse>(cardsQuery);
+
+    return orderedCardIds
+      .map((cardId) => cardsResponse.card[cardId])
+      .filter((apiCard): apiCard is CodecksApiCard => Boolean(apiCard))
+      .map((apiCard) => this.mapApiCardToMCPCard(apiCard));
   }
 
   private async updateCard(args: {

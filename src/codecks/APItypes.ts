@@ -56,6 +56,35 @@ export type listCardsResponse = {
   card: Record<string, CodecksApiCard>;
 };
 
+export type listHandCardsResponse = {
+  _root: { account: string };
+  account: Record<string, { id: string } & Record<string, string[]>>;
+  handCard: Record<
+    string,
+    {
+      card: string;
+      sortIndex: number;
+      user: string;
+    }
+  >;
+  card?: Record<string, CodecksApiCard>;
+};
+
+export type listQueueEntriesResponse = {
+  _root: { account: string };
+  account: Record<string, { id: string } & Record<string, string[]>>;
+  queueEntry: Record<
+    string,
+    {
+      card: string;
+      sortIndex: number;
+      user: string;
+      cardDoneAt?: string | null;
+      createdAt?: string;
+    }
+  >;
+};
+
 export type createCardResponse = {
   payload: {
     id: string;

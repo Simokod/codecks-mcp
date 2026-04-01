@@ -63,6 +63,7 @@ The Codecks MCP server is configured through the MCP client configuration file (
 
 - `get-card` - Get detailed information about a specific card
 - `list-cards` - List cards in a deck with optional filtering
+- `list-hand-cards` - List cards currently in the authenticated user's hand
 - `create-card` - Create a new card in a deck
 - `update-card` - Update card properties
 - `get-card-options` - Get available effort scale and priority labels for creating cards
