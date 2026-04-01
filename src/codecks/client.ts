@@ -18,7 +18,7 @@ class CodecksClient {
     this.context.initialize(
       rootData.account,
       rootData.userId,
-      rootData.projectId
+      rootData.projectId,
     );
 
     const metadata = await this.getMetadata();
@@ -36,8 +36,9 @@ class CodecksClient {
 
     console.error(
       `[CodecksClient] Making ${isDispatch ? "dispatch " : ""}request:`,
-      JSON.stringify(query, null, 2)
+      JSON.stringify(query, null, 2),
     );
+    console.error(`[CodecksClient] Request body:`, body);
 
     try {
       const response = await fetch(url, {
@@ -54,14 +55,14 @@ class CodecksClient {
         console.error(`[CodecksClient] Response status: ${response.status}`);
         const errorText = await response.text();
         throw new Error(
-          `HTTP error! status: ${response.status}, body: ${errorText}`
+          `HTTP error! status: ${response.status}, body: ${errorText}`,
         );
       }
 
       const result = await response.json();
       console.error(
         "[CodecksClient] Response received:",
-        JSON.stringify(result, null, 2)
+        JSON.stringify(result, null, 2),
       );
       return result;
     } catch (error) {
@@ -75,21 +76,7 @@ class CodecksClient {
       const response = await this.request<GetRootDataResponse>({
         _root: [
           {
-            account: [
-              "id",
-              "name",
-              "subdomain",
-              "activeProjectCount",
-              "billingEmail",
-              "billingName",
-              "createdAt",
-              "isDisabled",
-              "seats",
-              "staffPermission",
-              {
-                projects: ["name"],
-              },
-            ],
+            account: ["id", "name", "subdomain", { projects: ["name"] }],
             loggedInUser: ["id"],
           },
         ],
