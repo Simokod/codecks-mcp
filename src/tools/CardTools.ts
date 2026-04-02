@@ -36,7 +36,6 @@ const cardQueryFields = [
   "priority",
   "accountSeq",
   "checkboxStats",
-  "parentCardId",
 ];
 
 export class CardTools extends ToolGroup {
