@@ -36,6 +36,7 @@ const cardQueryFields = [
   "priority",
   "accountSeq",
   "checkboxStats",
+  "milestone",
 ];
 
 export class CardTools extends ToolGroup {
@@ -457,6 +458,7 @@ export class CardTools extends ToolGroup {
       effort: apiCard.effort,
       accountSeq: apiCard.accountSeq,
       checkboxStats: apiCard.checkboxStats,
+      milestoneId: apiCard.milestone ?? null,
     };
   }
 

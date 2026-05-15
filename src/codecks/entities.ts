@@ -65,6 +65,7 @@ export type CodecksApiCard = {
   parentCardId?: string | null;
   userId?: string;
   fakeCoverFileId?: string | null;
+  milestone?: string | null;
 };
 
 // ============================================================================
