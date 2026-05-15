@@ -15,8 +15,6 @@ build/
 .env.test.local
 .env.production.local
 
-# Claude Code project instructions (local only)
-.claude/
 
 # IDE files
 .vscode/
