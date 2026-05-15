@@ -90,6 +90,44 @@ export type CodecksDeck = {
   name: string;
 };
 
+export const MilestoneColor = [
+  "blue",
+  "green",
+  "red",
+  "yellow",
+  "gray",
+  "purple",
+  "orange",
+] as const;
+export type MilestoneColor = (typeof MilestoneColor)[number];
+
+export type CodecksApiMilestone = {
+  id: string;
+  name: string;
+  date: string | null;
+  startDate?: string | null;
+  color?: string;
+  description?: string | null;
+  isGlobal?: boolean;
+  isDeleted?: boolean;
+  accountSeq?: number;
+  createdAt?: string;
+  accountId?: string;
+};
+
+export type CodecksMilestone = {
+  id: string;
+  name: string;
+  date: string | null;
+  startDate?: string | null;
+  color?: string;
+  description?: string | null;
+  isGlobal?: boolean;
+  isDeleted?: boolean;
+  accountSeq?: number;
+  createdAt?: string;
+};
+
 export type CodecksSpace = {
   id: number;
   name: string | null;

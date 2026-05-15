@@ -6,6 +6,7 @@ import { CodecksConfig, validateConfig } from "./validations/config.js";
 import { ProjectTools } from "./tools/ProjectTools.js";
 import { DeckTools } from "./tools/DeckTools.js";
 import { CardTools } from "./tools/CardTools.js";
+import { MilestoneTools } from "./tools/MilestoneTools.js";
 
 async function main() {
   const config: CodecksConfig = {
@@ -39,6 +40,7 @@ async function main() {
   new ProjectTools(server, client).register();
   new DeckTools(server, client).register();
   new CardTools(server, client).register();
+  new MilestoneTools(server, client).register();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

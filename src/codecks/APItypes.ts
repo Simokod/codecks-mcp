@@ -1,6 +1,7 @@
 import {
   CodecksApiAccount,
   CodecksApiCard,
+  CodecksApiMilestone,
   CodecksApiProject,
 } from "./entities.js";
 
@@ -100,6 +101,21 @@ export type updateCardResponse = {
   status: string;
   assigneeId?: string;
   priority?: string;
+};
+
+export type listMilestonesResponse = {
+  _root: { account: string };
+  account: Record<string, { id: string; milestones: string[] }>;
+  milestone: Record<string, CodecksApiMilestone>;
+};
+
+export type getMilestoneResponse = {
+  milestone: Record<string, CodecksApiMilestone>;
+};
+
+export type milestoneActionResponse = {
+  payload: { id: string; accountSeq?: number } | null;
+  actionId: string;
 };
 
 export type getSpacesResponse = {

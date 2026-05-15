@@ -86,6 +86,12 @@ export class CardTools extends ToolGroup {
           .describe("The ID of the user to assign the card to"),
         priority: prioritySchema,
         effort: effortSchema,
+        milestoneId: z
+          .string()
+          .optional()
+          .describe(
+            "Optional milestone (timeline) id to attach the new card to"
+          ),
       }
     );
 
@@ -169,6 +175,13 @@ export class CardTools extends ToolGroup {
           .describe(
             "The ID of the hero card to nest this card under. Pass null to remove the parent."
           ),
+        milestoneId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe(
+            "The milestone (timeline) id to attach this card to. Pass null to detach from any milestone."
+          ),
       }
     );
 
@@ -187,6 +200,7 @@ export class CardTools extends ToolGroup {
     assigneeId?: string;
     priority?: string;
     effort?: number;
+    milestoneId?: string;
   }): Promise<createCardResponse> {
     if (!this.client.context.isInitialized()) {
       throw new Error("Context not initialized");
@@ -200,6 +214,7 @@ export class CardTools extends ToolGroup {
       ...(args.assigneeId && { assigneeId: args.assigneeId }),
       ...(args.priority && { priority: args.priority }),
       ...(args.effort && { effort: args.effort }),
+      ...(args.milestoneId && { milestoneId: args.milestoneId }),
     };
 
     const result = await this.client.request<createCardResponse>(
@@ -374,6 +389,7 @@ export class CardTools extends ToolGroup {
     visibility?: CardVisibility;
     cardType?: CardType;
     parentCardId?: string | null;
+    milestoneId?: string | null;
   }): Promise<boolean> {
     const updateData = {
       id: args.cardId,
@@ -387,6 +403,9 @@ export class CardTools extends ToolGroup {
       ...(args.cardType !== undefined && { cardType: args.cardType }),
       ...(args.parentCardId !== undefined && {
         parentCardId: args.parentCardId,
+      }),
+      ...(args.milestoneId !== undefined && {
+        milestoneId: args.milestoneId,
       }),
     };
 
