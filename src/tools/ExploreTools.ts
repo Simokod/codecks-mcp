@@ -11,6 +11,19 @@ import { ToolGroup } from "./ToolGroup.js";
  *   each call before approving.
  */
 export class ExploreTools extends ToolGroup {
+  // Clients may serialize a `z.any()` arg as a JSON string instead of an
+  // object (the JSON schema for `z.any()` is untyped). Accept both.
+  private coerce(value: unknown): any {
+    if (typeof value === "string") {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  }
+
   register(): void {
     this.registerTool(
       "query",
@@ -22,7 +35,7 @@ export class ExploreTools extends ToolGroup {
         "Notes: field selections are arrays of strings; `$limit` requires " +
         "`$order`; scalar columns come back snake_case. A malformed shape " +
         "returns HTTP 500.",
-      async (args) => this.client.request(args.query),
+      async (args) => this.client.request(this.coerce(args.query)),
       {
         query: z
           .any()
@@ -39,7 +52,7 @@ export class ExploreTools extends ToolGroup {
         "`endpoint` is e.g. `cards/update`, `handQueue/addCardsToHand`; " +
         "`body` is the action payload. Creates typically need projectId + " +
         "userId; the account/user ids come from the running context.",
-      async (args) => this.client.request(args.body ?? {}, args.endpoint),
+      async (args) => this.client.request(this.coerce(args.body) ?? {}, args.endpoint),
       {
         endpoint: z
           .string()
