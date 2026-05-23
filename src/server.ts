@@ -7,6 +7,7 @@ import { ProjectTools } from "./tools/ProjectTools.js";
 import { DeckTools } from "./tools/DeckTools.js";
 import { CardTools } from "./tools/CardTools.js";
 import { MilestoneTools } from "./tools/MilestoneTools.js";
+import { ExploreTools } from "./tools/ExploreTools.js";
 
 async function main() {
   const config: CodecksConfig = {
@@ -41,6 +42,7 @@ async function main() {
   new DeckTools(server, client).register();
   new CardTools(server, client).register();
   new MilestoneTools(server, client).register();
+  new ExploreTools(server, client).register();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
