@@ -3,7 +3,7 @@
 // ============================================================================
 
 export const CardType = ["hero", "task", "doc"] as const;
-export const CardStatus = ["not_started", "done"] as const;
+export const CardStatus = ["not_started", "started", "done"] as const;
 export const CardVisibility = ["default", "archived"] as const;
 
 export type CardType = (typeof CardType)[number];
