@@ -40,6 +40,23 @@ CodecksMCP is an MCP server that bridges AI assistants to the Codecks task manag
 
 **Codecks query syntax:** GraphQL-like with field selection arrays. Nested entities use `account(accountId)` wrapper. Filters inline: `cards({"deckId":"..."})`. Computed fields use `exists:` or `count:` prefixes.
 
+**Normalized graph — filtered vs unfiltered reads:** Codecks can side-load
+related entities of the same type into the response graph even when a filter
+was applied. For example, `resp.queueEntry` may contain entries for other users
+even if the query filtered by `userId`. Never iterate `Object.values(resp.X)`
+to read filtered results. Instead, read the ordered ID list from the parent
+account entity under the exact filter-key string, then look up those IDs:
+
+```ts
+const accountData = Object.values(response.account)[0];
+const ids = accountData[filterKeyString] ?? [];
+const results = ids.map((id) => response.queueEntry[id]).filter(Boolean);
+```
+
+This is the proven pattern — see `listHandCards` in `CardTools.ts` as the
+reference implementation. The mobile app mirrors this via a `filteredEntities`
+helper in its `client.ts`.
+
 **Card content:** The Codecks API stores title+description as a single `content` field formatted as `"${title}\n\n${description}"`. Tools split/join this on read/write.
 
 ### Required environment variables
