@@ -93,6 +93,10 @@ export class CardTools extends ToolGroup {
           .describe(
             "Optional milestone (timeline) id to attach the new card to"
           ),
+        inHand: z
+          .boolean()
+          .optional()
+          .describe("Set to true to immediately add the new card to the authenticated user's hand"),
       }
     );
 
@@ -183,6 +187,12 @@ export class CardTools extends ToolGroup {
           .describe(
             "The milestone (timeline) id to attach this card to. Pass null to detach from any milestone."
           ),
+        inHand: z
+          .boolean()
+          .optional()
+          .describe(
+            "Set to true to add the card to the authenticated user's hand, false to remove it."
+          ),
       }
     );
 
@@ -202,6 +212,7 @@ export class CardTools extends ToolGroup {
     priority?: string;
     effort?: number;
     milestoneId?: string;
+    inHand?: boolean;
   }): Promise<createCardResponse> {
     if (!this.client.context.isInitialized()) {
       throw new Error("Context not initialized");
@@ -224,6 +235,21 @@ export class CardTools extends ToolGroup {
     );
 
     console.error("Card created successfully", result);
+
+    if (args.inHand) {
+      const { userId, account } = this.client.context;
+      const accountId = account?.id;
+      if (!userId || !accountId) {
+        throw new Error("Context not initialized: userId and accountId required for hand operations");
+      }
+      const cardId = result.payload.id;
+      await this.client.request(
+        { cardIds: [cardId], accountId, userId },
+        "handQueue/addCardsToHand"
+      );
+      console.error("Card added to hand");
+    }
+
     return result;
   }
 
@@ -391,31 +417,67 @@ export class CardTools extends ToolGroup {
     cardType?: CardType;
     parentCardId?: string | null;
     milestoneId?: string | null;
+    inHand?: boolean;
   }): Promise<boolean> {
-    const updateData = {
-      id: args.cardId,
-      ...(args.deckId !== undefined && { deckId: args.deckId }),
-      ...(args.content !== undefined && { content: args.content }),
-      ...(args.assigneeId !== undefined && { assigneeId: args.assigneeId }),
-      ...(args.priority && { priority: args.priority }),
-      ...(args.effort && { effort: args.effort }),
-      ...(args.status && { status: args.status }),
-      ...(args.visibility !== undefined && { visibility: args.visibility }),
-      ...(args.cardType !== undefined && { cardType: args.cardType }),
-      ...(args.parentCardId !== undefined && {
-        parentCardId: args.parentCardId,
-      }),
-      ...(args.milestoneId !== undefined && {
-        milestoneId: args.milestoneId,
-      }),
-    };
+    const hasCardUpdate =
+      args.deckId !== undefined ||
+      args.content !== undefined ||
+      args.assigneeId !== undefined ||
+      args.priority !== undefined ||
+      args.effort !== undefined ||
+      args.status !== undefined ||
+      args.visibility !== undefined ||
+      args.cardType !== undefined ||
+      args.parentCardId !== undefined ||
+      args.milestoneId !== undefined;
 
-    const result = await this.client.request<updateCardResponse>(
-      updateData,
-      "cards/update"
-    );
+    if (hasCardUpdate) {
+      const updateData = {
+        id: args.cardId,
+        ...(args.deckId !== undefined && { deckId: args.deckId }),
+        ...(args.content !== undefined && { content: args.content }),
+        ...(args.assigneeId !== undefined && { assigneeId: args.assigneeId }),
+        ...(args.priority && { priority: args.priority }),
+        ...(args.effort && { effort: args.effort }),
+        ...(args.status && { status: args.status }),
+        ...(args.visibility !== undefined && { visibility: args.visibility }),
+        ...(args.cardType !== undefined && { cardType: args.cardType }),
+        ...(args.parentCardId !== undefined && {
+          parentCardId: args.parentCardId,
+        }),
+        ...(args.milestoneId !== undefined && {
+          milestoneId: args.milestoneId,
+        }),
+      };
 
-    console.error("Card updated successfully", result);
+      const result = await this.client.request<updateCardResponse>(
+        updateData,
+        "cards/update"
+      );
+      console.error("Card updated successfully", result);
+    }
+
+    if (args.inHand !== undefined) {
+      const { userId, account } = this.client.context;
+      const accountId = account?.id;
+      if (!userId || !accountId) {
+        throw new Error("Context not initialized: userId and accountId required for hand operations");
+      }
+      if (args.inHand) {
+        await this.client.request(
+          { cardIds: [args.cardId], accountId, userId },
+          "handQueue/addCardsToHand"
+        );
+        console.error("Card added to hand");
+      } else {
+        await this.client.request(
+          { cardIds: [args.cardId], userId },
+          "handQueue/removeCards"
+        );
+        console.error("Card removed from hand");
+      }
+    }
+
     return true;
   }
 
