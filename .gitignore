@@ -89,6 +89,9 @@ jspm_packages/
 # Serverless directories
 .serverless/
 
+# Cloudflare Wrangler
+.wrangler/
+
 # FuseBox cache
 .fusebox/
 
