@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/simokod-codecks-mcp-badge.png)](https://mseep.ai/app/simokod-codecks-mcp)
+
 # Codecks MCP
 
 A simple Model Context Protocol (MCP) server for Codecks task management. This MCP provides essential card and deck manipulation capabilities for AI assistants like Cursor, Claude, and other MCP-compatible tools.
