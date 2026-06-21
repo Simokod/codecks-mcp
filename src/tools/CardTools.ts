@@ -97,6 +97,18 @@ export class CardTools extends ToolGroup {
           .boolean()
           .optional()
           .describe("Set to true to immediately add the new card to the authenticated user's hand"),
+        cardType: z
+          .enum(CardType)
+          .optional()
+          .describe(
+            "Card type must be one of: " +
+              CardType.join(", ") +
+              '. Use "hero" for hero cards, "task" for regular tasks.'
+          ),
+        parentCardId: z
+          .string()
+          .optional()
+          .describe("The ID of the hero card to nest this card under."),
       }
     );
 
@@ -213,6 +225,8 @@ export class CardTools extends ToolGroup {
     effort?: number;
     milestoneId?: string;
     inHand?: boolean;
+    cardType?: string;
+    parentCardId?: string;
   }): Promise<createCardResponse> {
     if (!this.client.context.isInitialized()) {
       throw new Error("Context not initialized");
@@ -227,6 +241,8 @@ export class CardTools extends ToolGroup {
       ...(args.priority && { priority: args.priority }),
       ...(args.effort && { effort: args.effort }),
       ...(args.milestoneId && { milestoneId: args.milestoneId }),
+      ...(args.cardType && { cardType: args.cardType }),
+      ...(args.parentCardId && { parentCardId: args.parentCardId }),
     };
 
     const result = await this.client.request<createCardResponse>(
