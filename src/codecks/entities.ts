@@ -66,6 +66,12 @@ export type CodecksApiCard = {
   userId?: string;
   fakeCoverFileId?: string | null;
   milestone?: string | null;
+  // Read-side hierarchy fields. Unlike most relations these keep their
+  // query-time casing exactly as the API returns them: `parentCard` stays
+  // camelCase (it's a resolved relation) while `child_cards` comes back
+  // snake_case (it's a raw column), even within the same response.
+  parentCard?: string | null;
+  child_cards?: string[] | null;
 };
 
 // ============================================================================
@@ -167,6 +173,7 @@ export type CodecksCard = {
   inDeps?: string[];
   outDeps?: string[];
   parentCardId?: string | null;
+  childCardIds?: string[];
   userId?: string;
   fakeCoverFileId?: string | null;
 };

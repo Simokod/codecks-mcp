@@ -37,6 +37,8 @@ const cardQueryFields = [
   "accountSeq",
   "checkboxStats",
   "milestone",
+  "parentCard",
+  "childCards",
 ];
 
 export class CardTools extends ToolGroup {
@@ -114,10 +116,22 @@ export class CardTools extends ToolGroup {
 
     this.registerTool(
       "get-card",
-      "Get detailed information about a specific card",
-      async (args) => this.getCard(args.cardTitle),
+      "Get detailed information about a specific card, including its " +
+        "hierarchy: parentCardId (set if this card is nested under a hero " +
+        "card) and childCardIds (the cards nested under this one, if it's " +
+        "a hero card). Look up by cardId when you already have one (e.g. " +
+        "from another card's parentCardId/childCardIds), or by cardTitle " +
+        "to search by title.",
+      async (args) => this.getCard(args),
       {
-        cardTitle: z.string().describe("The title of the card to retrieve"),
+        cardTitle: z
+          .string()
+          .optional()
+          .describe("The title (or partial title) of the card to retrieve"),
+        cardId: z
+          .string()
+          .optional()
+          .describe("The exact ID of the card to retrieve"),
       }
     );
 
@@ -269,14 +283,24 @@ export class CardTools extends ToolGroup {
     return result;
   }
 
-  private async getCard(cardTitle: string): Promise<CodecksCard> {
+  private async getCard(args: {
+    cardTitle?: string;
+    cardId?: string;
+  }): Promise<CodecksCard> {
+    if (!args.cardId && !args.cardTitle) {
+      throw new Error("Either cardId or cardTitle must be provided");
+    }
+
+    const filterKey = args.cardId
+      ? `cards(${JSON.stringify({ cardId: args.cardId })})`
+      : `cards({"title":{"op":"contains","value":"${args.cardTitle}"}})`;
+
     const query = {
       _root: [
         {
           account: [
             {
-              [`cards({"title":{"op":"contains","value":"${cardTitle}"}})`]:
-                cardQueryFields,
+              [filterKey]: cardQueryFields,
             },
           ],
         },
@@ -286,11 +310,14 @@ export class CardTools extends ToolGroup {
     const response = await this.client.request<getCardResponse>(query);
 
     const accountData = Object.values(response.account)[0];
-    const cardIds =
-      accountData[`cards({"title":{"op":"contains","value":"${cardTitle}"}})`];
+    const cardIds = accountData[filterKey];
 
     if (!cardIds || cardIds.length === 0) {
-      throw new Error(`No card found with title containing "${cardTitle}"`);
+      throw new Error(
+        args.cardId
+          ? `No card found with ID "${args.cardId}"`
+          : `No card found with title containing "${args.cardTitle}"`
+      );
     }
 
     const cardId = cardIds[0];
@@ -520,7 +547,11 @@ export class CardTools extends ToolGroup {
       id: apiCard.cardId,
       title: apiCard.title,
       content: apiCard.content,
-      type: apiCard.isDoc ? "doc" : "task",
+      type: apiCard.derivedStatus?.includes("Hero")
+        ? "hero"
+        : apiCard.isDoc
+        ? "doc"
+        : "task",
       status: apiCard.status as CardStatus | undefined,
       assigneeId: apiCard.assigneeId,
       priority: apiCard.priority,
@@ -537,6 +568,8 @@ export class CardTools extends ToolGroup {
       accountSeq: apiCard.accountSeq,
       checkboxStats: apiCard.checkboxStats,
       milestoneId: apiCard.milestone ?? null,
+      parentCardId: apiCard.parentCard ?? null,
+      childCardIds: apiCard.child_cards ?? [],
     };
   }
 
