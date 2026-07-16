@@ -547,7 +547,7 @@ export class CardTools extends ToolGroup {
       id: apiCard.cardId,
       title: apiCard.title,
       content: apiCard.content,
-      type: apiCard.derivedStatus?.includes("Hero")
+      type: apiCard.derivedStatus?.toLowerCase().includes("hero")
         ? "hero"
         : apiCard.isDoc
         ? "doc"
